@@ -1,0 +1,176 @@
+🍽️ Concept Overview
+
+DishDate is a dating app that connects people through their shared love of food. Instead of swiping endlessly, users can match based on restaurant specials and cuisines they’re interested in visiting that day. The app shows “Today’s Specials” from nearby restaurants and lets users coordinate a date or discover matches with compatible dining preferences.
+
+🧩 Core MVP Goals
+
+Connect users around food experiences rather than personality traits alone.
+
+Simplify planning by recommending real restaurants with daily specials.
+
+Enable quick matching based on overlapping restaurant/cuisine interests.
+
+⚙️ Feature Breakdown (MVP Scope)
+1. User Onboarding
+
+Sign Up / Login (Email, Google, Apple, or Phone number)
+
+Profile Setup:
+
+Name, age, gender, short bio
+
+Food preferences (vegetarian, vegan, halal, etc.)
+
+Favorite cuisines
+
+Distance radius
+
+“Preferred dining days” (weekdays, weekends, evenings, etc.)
+
+2. Restaurant Discovery
+
+Today’s Specials Feed:
+
+Pulls data from restaurant APIs (e.g., Yelp, Google Places, or manually curated local database)
+
+Displays dish photos, name, restaurant, price, and distance
+
+Filters:
+
+Cuisine type (Italian, Indian, Sushi, etc.)
+
+Price range ($, $$, $$$)
+
+Dietary preferences
+
+Date availability (Today, Tomorrow, Weekend)
+
+Map View: Shows nearby restaurants with “Today’s Specials” pins.
+
+3. Matching System
+
+Food-first Matching Algorithm:
+
+Matches users who:
+
+Are interested in the same restaurant or cuisine
+
+Are available around the same time
+
+Fall within each other’s distance and age preferences
+
+“Dish Match” Popup: “You and Alex both want to try the ramen special at Izakaya Downtown tonight 🍜”
+
+Swipe or Like Interface (optional MVP extra):
+
+Swipe left/right on potential matches (like Tinder), or
+
+Simple “Interested in this restaurant” button to pair people up directly.
+
+4. Chat & Date Planning
+
+In-App Chat (Basic MVP version)
+
+Text messages only (no voice or video yet)
+
+Auto-suggestion: “Would you like to book a table at Café Milano?”
+
+Integrated Restaurant Info
+
+Restaurant link, phone number, and hours accessible in chat
+
+Simple Date Scheduler:
+
+Suggest timeslots for going to the restaurant
+
+Confirm “Dinner Date” with both users
+
+5. Backend Infrastructure
+
+Database: MongoDB or Firebase Firestore for quick cloud deployment
+
+Authentication: Firebase Auth or AWS Cognito
+
+Restaurant API Integration:
+
+Use Yelp Fusion or Google Places API to get menus, locations, and ratings
+
+For specials: Start with manually curated specials for 10–15 local restaurants (for demo)
+
+Matching Engine:
+
+Python or Node.js backend service that filters users based on cuisine/restaurant overlap + availability
+
+6. Frontend (Mobile App)
+
+Tech Stack:
+
+React Native (Expo) – for both iOS and Android
+
+UI Library: React Native Paper or NativeBase for styling
+
+Core Screens:
+
+Welcome / Login
+
+Profile Setup
+
+Restaurant Feed (“Today’s Specials”)
+
+Match List / Chat
+
+Settings
+
+7. Admin Panel (Optional MVP Add-on)
+
+Web dashboard for admins to:
+
+Add/edit restaurants and daily specials
+
+View user metrics and matches
+
+Manage reported users or content
+
+💾 Tech Stack Summary
+Layer	Technology
+Frontend	React Native (Expo)
+Backend	Node.js + Express
+Database	MongoDB (Atlas) or Firebase Firestore
+Auth	Firebase Auth or AWS Cognito
+Restaurant Data	Yelp Fusion API, Google Places
+Hosting	AWS EC2 / Render / Vercel
+Notifications	Firebase Cloud Messaging (FCM)
+🧠 Matching Logic (Simplified Pseudocode)
+for user in all_users:
+    for other_user in all_users:
+        if user != other_user:
+            if shared_restaurant_interest(user, other_user) and shared_time(user, other_user):
+                create_match(user, other_user)
+
+📈 Launch Strategy (for MVP)
+
+Location focus: Limit to one city (e.g., Orlando, FL) with ~10–20 restaurants.
+
+Restaurant partnerships: Work directly with local eateries to list daily specials.
+
+User acquisition:
+
+Partner with universities or local foodie clubs
+
+Instagram and TikTok ads (“Find your next date through your next dish 🍝”)
+
+Incentivize referrals (free meal coupon for first 5 matches)
+
+🧭 Future Features (Post-MVP)
+
+AI-powered “Food Compatibility Score”
+
+Voice/video chat before dates
+
+Table reservation integration (OpenTable API)
+
+“Split the bill” payment feature
+
+Event-based matching (e.g., “Taco Tuesday lovers”)
+
+Personalized food recommendations using ML models
