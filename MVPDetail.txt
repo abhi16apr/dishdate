@@ -1,0 +1,288 @@
+Love the concept—“Dish Date”: match ➜ meet ➜ eat. Below is a practical, backend-first blueprint to get you from 0→MVP, then the free tools to stand it up without spending much.
+
+# 1) System overview (MVP scope)
+
+* Platforms: iOS/Android (later), mobile-web (now).
+* Core loop: user signs up → swipes/matches → chat opens → app proposes venues optimized for both people (distance/time, cuisines, price) with a chosen/common meeting point or via search.
+* Privacy & safety built-in: no precise home coords stored, on-platform chat only, venue suggestions favor public places.
+
+# 2) Backend architecture (MVP-first, scalable later)
+
+**Language/Framework**
+
+* Python + FastAPI (fast, async, great docs, easy ML integration).
+
+**Services (start as a monolith with clear modules)**
+
+1. Auth & Users
+2. Profiles & Preferences (diet, cuisine likes/dislikes, price, ambiance)
+3. Matching (swipe queues, pair creation, block/report)
+4. Chat (WebSocket)
+5. Geo/Places (search, meeting point, routing)
+6. Recommendations (ranking engine + embeddings)
+7. Notifications (email/push)
+8. Admin/Moderation (flags, content review, metrics)
+
+**Storage**
+
+* **PostgreSQL** (+ **PostGIS** for geospatial)
+* **Redis** for sessions, rate limits, short-lived caches
+* **Object Storage** for images (profile pics)
+* **Vector search** for embeddings (use **pgvector** inside Postgres to keep stack simple)
+
+**Eventing / async**
+
+* Start with FastAPI BackgroundTasks; upgrade to **Celery** + **Redis/RabbitMQ** for: nightly re-ranking, place cache refresh, email digests.
+
+**APIs**
+
+* REST (JSON) + WebSocket for chat and live recommendations.
+* JWT auth (access/refresh), OAuth (Sign in with Apple/Google optional).
+
+**Infra & Devops (low-cost)**
+
+* Containerize with Docker; deploy to **Railway**, **Fly.io**, or **Render** (free tiers).
+* **GitHub Actions** for CI/CD (lint, tests, migrations).
+* Observability: **Sentry** (errors), **Prometheus/Grafana** or **OpenTelemetry** + a hosted viewer (lightweight at MVP).
+
+# 3) Data model (lean, production-ready)
+
+(Use snake_case; `…_id` are UUIDs.)
+
+**users**
+
+* id, email (unique), phone (optional), password_hash (or external_oauth), created_at, banned_at (nullable)
+
+**profiles**
+
+* user_id (PK/FK), display_name, birthdate, gender (enum), photos (jsonb), bio, job_title, education, verified_at (nullable)
+
+**preferences**
+
+* user_id (PK/FK), cuisines_liked (text[]), cuisines_blocked (text[]), diet (enum: none, vegetarian, vegan, halal, kosher), price_tiers (int[] 1–4), radius_km (int), ambiance (text[]), noise (enum), alcohol_ok (bool)
+
+**locations**
+
+* user_id (PK/FK), city, last_known_point (geography(Point, 4326)), last_updated_at
+  *(Store coarse location—round/obfuscate before saving.)*
+
+**swipes**
+
+* id, swiper_id, target_id, direction (like|pass), created_at, source (queue|search)
+
+**matches**
+
+* id, user_a, user_b, created_at, closed_at (nullable), reason_closed (enum)
+
+**messages**
+
+* id, match_id, sender_id, text, media_url (nullable), created_at
+
+**venues** (cached from APIs)
+
+* id, provider (osm|yelp|fsq), provider_ref, name, location (geography(Point)), address, city, price_tier (1–4), tags (text[]), cuisines (text[]), rating (numeric), review_count (int), hours (jsonb), last_synced_at
+
+**recommendation_events**
+
+* id, match_id, context (jsonb: meeting_point, time_window, constraints), candidate_venue_ids (uuid[]), scores (float[]), chosen_venue_id, created_at
+
+**embeddings**
+
+* entity_type (profile|venue|cuisine), entity_id, vector (vector), model, created_at
+
+**reports**
+
+* id, reporter_id, reported_user_id (nullable), match_id (nullable), message_id (nullable), category, notes, created_at, resolved_at
+
+# 4) Core flows
+
+**Sign-up & Onboarding**
+
+* Email/phone verification → minimal profile → initial likes/dislikes (5–10 cuisine choices) → consent for coarse location.
+
+**Matching**
+
+* Candidate retrieval: geo-filtered, age range, mutual prefs → ranking (lightweight) → swipe deck.
+* When both “like”: create `matches` row, open chat.
+
+**Meeting point selection**
+
+* Option A: users pick a common spot (map pin or named place).
+* Option B: system computes a neutral point:
+
+  * Start with **geometric median** of user points (robust to outliers).
+  * Optionally minimize **total travel time** using routing (driving/transit/walking).
+
+**Recommendations**
+
+* Fetch venues around meeting point (or around a specific neighborhood if provided).
+* Filter by both users’ constraints: diet, price tiers, alcohol, ambiance, noise.
+* Rank with a blended score (see §5).
+* Return top N, each with travel time for both users, cuisine match reasons, and “why we picked this”.
+
+# 5) Recommendation engine (MVP → v2)
+
+**Inputs**
+
+* User taste vectors (cuisines/ambiance/diet); inferred from likes, past “thumbs up/down” on venues.
+* Context: date/time window, weather (optional), distance/time budget, transit mode.
+
+**Candidates**
+
+* Pull 60–150 venues via external APIs near meeting point (radius adaptive: 0.5–3 km).
+* Deduplicate by name+geohash; hydrate missing fields (price, tags) from multiple sources.
+
+**Scoring (example; tune later)**
+
+* `S = 0.35 * CuisineSim + 0.15 * DietOK + 0.2 * PriceFit + 0.15 * AmbianceSim + 0.1 * Popularity + 0.05 * TravelFairness`
+
+  * *CuisineSim:* average of cosine(userA, venue) & cosine(userB, venue) using simple bag-of-cuisines embeddings or small text embeddings.
+  * *DietOK:* 1/0 if venue menu tags meet both users’ diet rules (or probabilistic if inferred).
+  * *PriceFit:* penalize outside intersection of price_tiers.
+  * *AmbianceSim:* tags like “cozy”, “romantic”, “quiet”, “lively”.
+  * *Popularity:* normalized rating × log(review_count).
+  * *TravelFairness:* small bonus for balanced times (avoid 5 min vs 45 min).
+
+**Meeting point**
+
+* Start = midpoint; refine using **Weiszfeld’s algorithm** (geometric median) on users’ coordinates; if routing times are available, do a local search minimizing total time.
+
+**Cold-start**
+
+* Ask 6–8 quick preference questions (cuisine pairs).
+* Use city-level popularity prior + diet filters; quickly adapt with feedback buttons.
+
+**Learning loop**
+
+* Store `recommendation_events`; log which card users tap/call/navigate.
+* Nightly training job updates simple weights; later move to bandits (e.g., Thompson Sampling over weight vectors per city/time).
+
+# 6) APIs (sample endpoints)
+
+**Auth**
+
+* `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`
+
+**Profiles**
+
+* `GET/PUT /me`, `PUT /me/preferences`, `PUT /me/location`
+
+**Matching**
+
+* `GET /discover?cursor=…` (swipe deck)
+* `POST /swipes` {target_id, direction}
+* `GET /matches`, `GET /matches/{id}`
+
+**Chat**
+
+* `GET /ws/chat?match_id=…` (WebSocket)
+* `GET /messages?match_id=…&cursor=…`
+* `POST /messages`
+
+**Places & Recs**
+
+* `POST /recs/meeting-point` {point|neighborhood|auto} → meeting_point
+* `POST /recs/venues` {match_id, meeting_point, time_window?, constraints?} → ranked venues
+* `GET /venues/{id}` (details)
+
+**Moderation & Reports**
+
+* `POST /reports`, `GET /admin/reports` (admin only)
+
+# 7) Security, privacy, trust & safety (non-negotiable)
+
+* Hash passwords (Argon2), rotate JWT secrets, IP/device rate limiting (Redis).
+* PII minimization: never store raw home address; round geolocations (e.g., 3–4 dp lat/lon) and store a **separate** precise value only in volatile cache for routing.
+* Age verification and 18+ gating.
+* In-app report & block; auto-moderate images (NSFW) using open-source models; human review queue.
+* Content Security Policy, HTTPS only, audit logs for admin actions.
+* Data retention policy (delete on request, auto-purge stale precise location cache).
+* Legal: Terms, Privacy Policy; consider COPPA/GDPR/CCPA basics.
+
+# 8) Analytics & experimentation
+
+* Event schema: signup funnel, swipe rates, match rate, rec impressions, tap-throughs, “start navigation” clicks, post-date thumbs up.
+* A/B framework (feature flags) to test rankers, UI copy, and meeting-point heuristics.
+
+# 9) Milestone plan (10–12 weeks, scrappy MVP)
+
+**Weeks 1–2**: Repo, schema, auth, profiles, prefs, minimal swipe/match.
+**Weeks 3–4**: WebSocket chat, location capture, PostGIS, place API integration, venues cache.
+**Weeks 5–6**: Meeting-point compute + first recommender; top-10 list with reasons.
+**Weeks 7–8**: Feedback signals, logs, nightly jobs, moderation basics.
+**Weeks 9–10**: Push/email notifications, soft-launch to friends; fix friction.
+**Weeks 11–12**: Analytics dashboards, A/B infra, polish, landing page.
+
+# 10) Concrete tech choices (free-friendly)
+
+* **Backend**: FastAPI, SQLModel/SQLAlchemy, Alembic (migrations)
+* **DB**: Postgres (with **pgvector**, **PostGIS**)
+* **Cache/Queue**: Redis
+* **Chat**: native WebSocket in FastAPI (upgrade later if needed)
+* **Maps/Geocoding/Routing**: see free resources below
+* **Embeddings**: SentenceTransformers (e.g., `all-MiniLM-L6-v2`) for cuisine/menu text; store in pgvector
+* **Images**: user uploads to object storage via signed URLs
+* **Testing**: Pytest + HTTPX + Faker
+* **CI**: GitHub Actions (lint, test, build, migrate)
+* **Monitoring**: Sentry (free), healthcheck endpoint
+
+# 11) Free (or generous free-tier) resources you can use now
+
+**Hosting & DB**
+
+* **Supabase** (free Postgres + Auth + Storage; add pgvector; PostGIS supported on paid—if you need PostGIS free, use Neon below + external PostGIS alternative)
+* **Neon** (serverless Postgres; pgvector available; PostGIS in preview in some regions—else run routing outside DB)
+* **Railway**, **Render**, **Fly.io** (free containers)
+
+**Auth**
+
+* **Supabase Auth** (email/OTP, social)
+* **Keycloak** (self-hosted, free) if you want enterprise-style SSO later
+
+**Maps / Places / Geocoding / Routing**
+
+* **OpenStreetMap + Nominatim** (geocoding).
+* **OpenRouteService** (free tier for routing/travel time).
+* **Foursquare Places** and **Yelp Fusion** (free developer tiers; rate-limited).
+* **MapLibre** or **Leaflet** (free map rendering).
+* **MapTiler** (generous free map tiles).
+* **Google Places** offers $200/mo free credit (after that it’s paid)—great for quality, but design a cache to stay within free use.
+
+**Email/Push**
+
+* **Brevo (Sendinblue)** free tier email; **Mailgun** sandbox for dev; **Firebase Cloud Messaging** for mobile push (free).
+
+**Observability & Analytics**
+
+* **Sentry** (errors), **PostHog** (product analytics, open-source cloud free), **Plausible** (trial/lightweight), **GrowthBook** (open-source A/B flags).
+
+**Content moderation**
+
+* **Open-source NSFW detectors** (e.g., `yolov5-nsfw`, `nsfw_model`) to screen avatars; or **Hive** has a free tier (subject to change).
+
+**Security**
+
+* **OWASP Cheat Sheets**, **Mozilla SSL config generator**, **ZAP** (DAST) free.
+
+**Dev acceleration**
+
+* **Cookiecutter FastAPI** templates, **Pydantic** for validation, **Faker** for seed data.
+
+# 12) Small but helpful implementation details
+
+* **Rate limits**: per-IP and per-user on `POST /swipes`, `POST /messages`, and all `/recs/*` (Redis tokens).
+* **Venue caching**: store external responses (normalized) in `venues`; refresh popular areas nightly to avoid hitting free-tier limits.
+* **Distance/time**: avoid storing exact home location—save city + rounded coordinates; compute precise routes in memory, never persist exact points long-term.
+* **Reason strings**: return “why this pick” with each venue (e.g., “both like Thai, quiet, mid-price, 10–14 min each”). It increases trust and taps to navigate.
+* **Explainability**: log top features contributing to score for later tuning.
+* **Fairness**: include `TravelFairness` to avoid systematically favoring one user’s neighborhood.
+
+---
+
+If you want, I can spin up:
+
+* a **starter FastAPI project structure** (routers, models, migrations),
+* the **SQL schema** for the tables above,
+* and a **sample `/recs/venues` endpoint** with a first-pass scoring function and a mock provider adapter.
+
+Say the word and I’ll drop a ready-to-run scaffold.
