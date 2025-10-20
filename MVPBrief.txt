@@ -1,0 +1,156 @@
+# 🍽️ DishDate MVP Product Brief
+
+## 1. Concept Overview
+
+**DishDate** is a dating app that connects people through their shared love of food. Instead of matching based on personality traits, users match based on restaurant specials and dining preferences. The app showcases **"Today’s Specials"** at local restaurants, allowing users to plan dates or find matches who want to visit the same spots.
+
+---
+
+## 2. Target Problem
+
+* Traditional dating apps lack *contextual experiences* for first dates.
+* People often struggle to decide *where to eat* or *what to do* when meeting new people.
+* Food is a universal connection point that simplifies decision-making and reduces awkwardness.
+
+---
+
+## 3. MVP Goals
+
+* **Simplify date planning** through shared restaurant interests.
+* **Match users based on dining compatibility.**
+* **Highlight local restaurant specials** to encourage real-world meetups.
+
+---
+
+## 4. Core Features
+
+### A. User Onboarding
+
+* Sign up via email, Google, or Apple.
+* Profile setup with name, age, bio, and food preferences.
+* Select preferred cuisines and availability times.
+
+### B. Restaurant Discovery
+
+* “Today’s Specials” feed (pulled via Yelp/Google APIs or curated database).
+* Filters: cuisine, price, dietary preferences, and location radius.
+* Map view to visualize nearby specials.
+
+### C. Matching System
+
+* Algorithm pairs users based on:
+
+  * Shared interest in a restaurant/cuisine.
+  * Overlapping availability windows.
+* "Dish Match" popup: e.g., *"You and Mia both want to try the sushi special at Izakaya tonight!"*
+
+### D. Chat & Planning
+
+* Basic text-based chat with restaurant info embedded.
+* One-tap date suggestion ("Book Table" link).
+* Optional reminders or confirmations.
+
+### E. Backend & APIs
+
+* **Database:** MongoDB or Firebase Firestore.
+* **Auth:** Firebase Authentication.
+* **Restaurant Data:** Yelp Fusion or Google Places API.
+* **Hosting:** AWS EC2 or Render.
+
+---
+
+## 5. Core User Flow
+
+1. **User signs up** and enters food preferences.
+2. **DishDate shows today’s specials** from local restaurants.
+3. **User selects a restaurant** they want to try.
+4. **App matches them** with others who want to go to the same place.
+5. **Users chat** and decide when to meet.
+
+---
+
+## 6. MVP Screens (Wireframe Outline)
+
+1. **Welcome/Login Screen**
+
+   * Minimal UI, with logo and quick sign-in options.
+
+2. **Profile Setup Screen**
+
+   * Upload photo, select cuisines, set radius.
+
+3. **Restaurant Feed Screen**
+
+   * Vertical cards: image, dish name, restaurant, price, distance.
+   * Filter button top-right.
+
+4. **Dish Match Popup**
+
+   * Highlight shared restaurant.
+   * Button: *Start Chat* or *Suggest Date*.
+
+5. **Chat Screen**
+
+   * Text messages.
+   * Embedded restaurant info with "Book Table" link.
+
+---
+
+## 7. Tech Stack Summary
+
+Option A — All-in Firebase (fastest to ship, NoSQL)
+
+Auth: Firebase Auth
+
+DB: Firestore (+ GeoFirestore for radius queries)
+
+Storage: Firebase Storage
+
+Realtime/Triggers: Cloud Functions (match creation, chat seed)
+
+Push: FCM
+
+Pros: minimal DevOps, great mobile SDKs, easy notifications.
+
+Cons: relational queries (mutual likes/venues today) need careful data modeling & Cloud Functions; complex aggregates; later analytics/SQL is harder.
+
+Use if: team wants the quickest path with Firebase familiarity.
+
+---
+
+## 8. Future Expansion (Post-MVP)
+
+* AI-driven food compatibility score.
+* Table reservations (OpenTable integration).
+* Voice/video chat.
+* Event-based matches (e.g., "Taco Tuesday").
+* Payment split feature for date planning.
+
+---
+
+## 9. MVP Diagram (Conceptual)
+
+**[User]** ➞ fills food prefs
+**[App]** ➞ shows daily specials from APIs
+**[User]** ➞ picks restaurant
+**[Match Engine]** ➞ finds others with same choice
+**[Chat]** ➞ restaurant info + plan date
+**[Outcome]** ➞ real-world dining experience
+
+---
+
+## 10. Launch Plan
+
+* **City Focus:** Start in one metro area (e.g., Orlando, FL).
+* **Restaurant Partnerships:** Onboard 10–20 local restaurants.
+* **Marketing:** Social media campaigns, foodie influencers, campus collabs.
+* **Metrics to Track:** Daily active users, matches made, restaurant clicks, chat-to-date conversions.
+
+---
+
+## 11. Elevator Pitch
+
+**DishDate** is where romance meets flavor. It helps users find dates through shared food interests, showing today’s restaurant specials and connecting people ready to turn a craving into a connection.
+
+
+OM GOT A MASSIVE DIK 
