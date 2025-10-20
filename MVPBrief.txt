@@ -98,15 +98,23 @@
 
 ## 7. Tech Stack Summary
 
-| Layer          | Technology                         |
-| -------------- | ---------------------------------- |
-| Frontend       | React Native (Expo)                |
-| Backend        | Node.js + Express                  |
-| Database       | MongoDB Atlas / Firebase Firestore |
-| Authentication | Firebase Auth                      |
-| APIs           | Yelp Fusion, Google Places         |
-| Hosting        | AWS EC2 / Render                   |
-| Notifications  | Firebase Cloud Messaging           |
+Option A — All-in Firebase (fastest to ship, NoSQL)
+
+Auth: Firebase Auth
+
+DB: Firestore (+ GeoFirestore for radius queries)
+
+Storage: Firebase Storage
+
+Realtime/Triggers: Cloud Functions (match creation, chat seed)
+
+Push: FCM
+
+Pros: minimal DevOps, great mobile SDKs, easy notifications.
+
+Cons: relational queries (mutual likes/venues today) need careful data modeling & Cloud Functions; complex aggregates; later analytics/SQL is harder.
+
+Use if: team wants the quickest path with Firebase familiarity.
 
 ---
 
